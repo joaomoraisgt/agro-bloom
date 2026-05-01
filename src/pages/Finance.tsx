@@ -131,7 +131,7 @@ export default function Finance() {
   );
 }
 
-function Chips<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; l: string }[] }) {
+function Chips<T extends string>({ value, onChange, options }: { value: T; onChange: (v: any) => void; options: { v: T; l: string }[] }) {
   return (
     <div className="inline-flex p-1 rounded-full bg-muted/70 border border-border/40 w-full">
       {options.map((o) => (
