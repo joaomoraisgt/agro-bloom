@@ -17,8 +17,8 @@ export default function Dashboard() {
 
     const today = new Date(); today.setHours(0,0,0,0);
     const upcoming = tasksMock
-      .filter((t) => !t.done && new Date(t.date) >= today)
-      .sort((a,b) => +new Date(a.date) - +new Date(b.date))
+      .filter((t) => !t.done && t.start && new Date(t.start) >= today)
+      .sort((a,b) => +new Date(a.start!) - +new Date(b.start!))
       .slice(0, 3);
 
     return { trees: trees.length, alive, sick, producing, income, expense, upcoming };
@@ -71,15 +71,15 @@ export default function Dashboard() {
           {stats.upcoming.map((t) => (
             <div key={t.id} className="flex items-center gap-4 p-4">
               <div className="text-center min-w-12">
-                <div className="font-display text-2xl leading-none">{new Date(t.date).getDate()}</div>
+                <div className="font-display text-2xl leading-none">{new Date(t.start!).getDate()}</div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
-                  {new Date(t.date).toLocaleDateString("pt-PT", { month: "short" })}
+                  {new Date(t.start!).toLocaleDateString("pt-PT", { month: "short" })}
                 </div>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{t.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(t.date).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(t.start!).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                   {t.recurrence !== "none" && ` · ${t.recurrence}`}
                 </p>
               </div>

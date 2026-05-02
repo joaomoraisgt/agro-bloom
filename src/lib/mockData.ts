@@ -167,7 +167,8 @@ export type Recurrence = "none" | "daily" | "weekly" | "monthly" | "yearly";
 export interface Task {
   id: string;
   title: string;
-  date: string; // ISO
+  start: string | null; // ISO; null => standby (não agendada)
+  end: string | null;   // ISO; null => standby
   done: boolean;
   recurrence: Recurrence;
   notes?: string;
@@ -179,19 +180,37 @@ const sampleTasks = [
   "Tratamento contra vespa", "Pesagem castanha", "Manutenção trator",
   "Enxertia setor 2 fila C", "Recolha ouriços setor 4", "Reunião fornecedor mel",
   "Limpeza mato setor 6", "Inspeção castanheiros doentes", "Carregar camião",
+  "Poda 1L geral", "Poda 2 setor", "Poda formação setor 3",
 ];
 function buildTasks(): Task[] {
   const out: Task[] = [];
   for (let i = 0; i < 35; i++) {
     const offset = Math.floor(taskRng() * 90) - 30;
-    const d = new Date(); d.setDate(d.getDate() + offset); d.setHours(7 + Math.floor(taskRng() * 10), 0, 0, 0);
+    const start = new Date(); start.setDate(start.getDate() + offset); start.setHours(7 + Math.floor(taskRng() * 10), 0, 0, 0);
+    // Algumas tarefas duram dias/semanas
+    const durRoll = taskRng();
+    const durDays = durRoll < 0.6 ? 0 : durRoll < 0.85 ? 1 + Math.floor(taskRng() * 4) : 7 + Math.floor(taskRng() * 21);
+    const end = new Date(start); end.setDate(end.getDate() + durDays); end.setHours(start.getHours() + 1, 0, 0, 0);
     const recs: Recurrence[] = ["none","none","none","weekly","monthly"];
     out.push({
       id: `t-${i}`,
       title: sampleTasks[Math.floor(taskRng() * sampleTasks.length)],
-      date: d.toISOString(),
+      start: start.toISOString(),
+      end: end.toISOString(),
       done: offset < 0 && taskRng() > 0.3,
       recurrence: recs[Math.floor(taskRng() * recs.length)],
+    });
+  }
+  // Algumas standby
+  const standbySamples = ["Poda 1 fila K", "Comprar adubo orgânico", "Reparar vedação setor 7", "Avaliar enxertia martainha", "Limpeza armazém"];
+  for (let i = 0; i < standbySamples.length; i++) {
+    out.push({
+      id: `ts-${i}`,
+      title: standbySamples[i],
+      start: null,
+      end: null,
+      done: false,
+      recurrence: "none",
     });
   }
   return out;
