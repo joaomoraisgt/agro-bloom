@@ -27,44 +27,76 @@ export default function Trees() {
   //   base → [ setor 4 | setor 3 | setor 2 | setor 1 ]
   const layout = useMemo(() => {
     const baseSectorWidth = TREES_PER_ROW_COUNT * TREE_GAP;
-    const sectorHeight = ROWS_COUNT * ROW_GAP + 28; // + label
+    const baseSectorHeight = ROWS_COUNT * ROW_GAP;
+    const labelPad = 28;
     const bottomRowWidth = 4 * baseSectorWidth + 3 * SECTOR_GAP;
-    const fullSectorWidth = bottomRowWidth; // setores 5,6,7 esticados
-    // Espaçamento horizontal das árvores nos setores full-width
+    const fullSectorWidth = bottomRowWidth; // setores 5,6,7 esticados em largura
+
+    // Para setores 5,6,7: filas HORIZONTAIS → cada fila ocupa toda a largura,
+    // árvores distribuídas ao longo de X. As filas (ROWS_COUNT) ocupam a altura.
     const fullTreeGap = fullSectorWidth / TREES_PER_ROW_COUNT;
+    const fullSectorHeight = ROWS_COUNT * ROW_GAP;
+
+    // Para setores 2 e 3: filas VERTICAIS → transpostas (fila = coluna).
+    // Largura passa a depender de ROWS_COUNT e altura de TREES_PER_ROW.
+    const verticalSectorWidth = ROWS_COUNT * ROW_GAP;
+    const verticalSectorHeight = TREES_PER_ROW_COUNT * TREE_GAP;
+
+    // Setores 1 e 4 mantêm orientação original (filas horizontais).
+    const horizontalSectorHeight = ROWS_COUNT * ROW_GAP;
+
+    // Altura da linha de baixo = maior dos setores aí presentes
+    const bottomHeight = Math.max(verticalSectorHeight, horizontalSectorHeight) + labelPad;
+    const fullHeight = fullSectorHeight + labelPad;
 
     const totalWidth = bottomRowWidth;
-    const totalHeight = 3 * (sectorHeight + SECTOR_GAP) + sectorHeight + 20;
+    const totalHeight = 3 * (fullHeight + SECTOR_GAP) + bottomHeight + 20;
 
     // Y de cada setor (de cima para baixo: 7,6,5,[4..1])
     const sectorY: Record<number, number> = {};
     sectorY[7] = 20;
-    sectorY[6] = sectorY[7] + sectorHeight + SECTOR_GAP;
-    sectorY[5] = sectorY[6] + sectorHeight + SECTOR_GAP;
-    const bottomY = sectorY[5] + sectorHeight + SECTOR_GAP;
+    sectorY[6] = sectorY[7] + fullHeight + SECTOR_GAP;
+    sectorY[5] = sectorY[6] + fullHeight + SECTOR_GAP;
+    const bottomY = sectorY[5] + fullHeight + SECTOR_GAP;
     sectorY[4] = bottomY; sectorY[3] = bottomY; sectorY[2] = bottomY; sectorY[1] = bottomY;
 
-    // X e largura de cada setor
+    // X, W, H de cada setor
     const sectorX: Record<number, number> = {};
     const sectorW: Record<number, number> = {};
-    [5, 6, 7].forEach((s) => { sectorX[s] = 0; sectorW[s] = fullSectorWidth; });
-    // Bottom: 4 esquerda, depois 3, 2, 1 (1 à direita)
+    const sectorH: Record<number, number> = {};
+    [5, 6, 7].forEach((s) => { sectorX[s] = 0; sectorW[s] = fullSectorWidth; sectorH[s] = fullSectorHeight; });
+
+    // Bottom: 4 esquerda, depois 3, 2, 1 (1 à direita).
+    // Cada slot tem largura = baseSectorWidth, mas setores 2 e 3 desenham transpostos centrados nesse slot.
     const bottomOrder = [4, 3, 2, 1];
     bottomOrder.forEach((s, i) => {
       sectorX[s] = i * (baseSectorWidth + SECTOR_GAP);
-      sectorW[s] = baseSectorWidth;
+      const isVertical = s === 2 || s === 3;
+      sectorW[s] = isVertical ? verticalSectorWidth : baseSectorWidth;
+      sectorH[s] = isVertical ? verticalSectorHeight : horizontalSectorHeight;
     });
 
     const positions = new Map<string, { x: number; y: number }>();
     for (const t of trees) {
-      const isFull = t.sector >= 5;
-      const gap = isFull ? fullTreeGap : TREE_GAP;
       const rowIdx = rowToIdx(t.row);
-      const x = sectorX[t.sector] + (t.index - 1) * gap + gap / 2;
-      const y = sectorY[t.sector] + rowIdx * ROW_GAP + ROW_GAP / 2 + 22;
+      const treeIdx = t.index - 1;
+      let x = 0, y = 0;
+      if (t.sector >= 5) {
+        // Filas horizontais, esticadas em largura
+        x = sectorX[t.sector] + treeIdx * fullTreeGap + fullTreeGap / 2;
+        y = sectorY[t.sector] + labelPad + rowIdx * ROW_GAP + ROW_GAP / 2;
+      } else if (t.sector === 2 || t.sector === 3) {
+        // Filas verticais (transposto): rows ao longo de X, índice ao longo de Y
+        x = sectorX[t.sector] + rowIdx * ROW_GAP + ROW_GAP / 2;
+        y = sectorY[t.sector] + labelPad + treeIdx * TREE_GAP + TREE_GAP / 2;
+      } else {
+        // Setores 1 e 4: filas horizontais (original)
+        x = sectorX[t.sector] + treeIdx * TREE_GAP + TREE_GAP / 2;
+        y = sectorY[t.sector] + labelPad + rowIdx * ROW_GAP + ROW_GAP / 2;
+      }
       positions.set(t.code, { x, y });
     }
-    return { sectorHeight, totalWidth, totalHeight, positions, sectorX, sectorY, sectorW };
+    return { totalWidth, totalHeight, positions, sectorX, sectorY, sectorW, sectorH, labelPad };
   }, [trees]);
 
   function colorFor(t: Tree): string {
@@ -239,9 +271,10 @@ export default function Trees() {
             const x = layout.sectorX[s];
             const y = layout.sectorY[s];
             const w = layout.sectorW[s];
+            const h = layout.sectorH[s] + layout.labelPad;
             return (
               <g key={s}>
-                <rect x={x - 6} y={y - 6} width={w + 12} height={layout.sectorHeight + 12}
+                <rect x={x - 6} y={y - 6} width={w + 12} height={h + 6}
                   rx={10} fill="hsl(var(--card))" opacity={0.6} />
                 <text x={x + 4} y={y + 10} fontSize={14} fontFamily="Sora" fill="hsl(var(--muted-foreground))" letterSpacing="0.15em">
                   SETOR {s}
