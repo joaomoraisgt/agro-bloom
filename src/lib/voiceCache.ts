@@ -1,38 +1,54 @@
 import { useEffect, useState } from "react";
 
-export interface CachedVoiceNote {
+export type CachedKind = "voice" | "photo" | "file";
+export interface CachedItem {
   id: string;
-  text: string;
+  kind: CachedKind;
+  text?: string;          // transcrição ou descrição
+  fileName?: string;      // nome do ficheiro
+  mime?: string;
+  dataUrl?: string;       // base64 (mock — em produção iria para storage)
   createdAt: string;
   synced: boolean;
 }
 
-const KEY = "soutos.voice.cache";
+const KEY = "soutos.cache.v2";
 
-export function loadCache(): CachedVoiceNote[] {
+export function loadCache(): CachedItem[] {
   try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
 }
-export function saveCache(items: CachedVoiceNote[]) {
-  localStorage.setItem(KEY, JSON.stringify(items));
+export function saveCache(items: CachedItem[]) {
+  try { localStorage.setItem(KEY, JSON.stringify(items)); } catch {}
+  window.dispatchEvent(new Event("soutos.cache.changed"));
 }
 export function addNote(text: string) {
   const items = loadCache();
-  items.unshift({ id: crypto.randomUUID(), text, createdAt: new Date().toISOString(), synced: false });
+  items.unshift({ id: crypto.randomUUID(), kind: "voice", text, createdAt: new Date().toISOString(), synced: false });
   saveCache(items);
-  window.dispatchEvent(new Event("soutos.cache.changed"));
+}
+export function addAttachment(input: { kind: "photo" | "file"; fileName: string; mime: string; dataUrl: string; text?: string }) {
+  const items = loadCache();
+  items.unshift({
+    id: crypto.randomUUID(),
+    kind: input.kind,
+    fileName: input.fileName,
+    mime: input.mime,
+    dataUrl: input.dataUrl,
+    text: input.text,
+    createdAt: new Date().toISOString(),
+    synced: false,
+  });
+  saveCache(items);
 }
 export function markAllSynced() {
-  const items = loadCache().map((i) => ({ ...i, synced: true }));
-  saveCache(items);
-  window.dispatchEvent(new Event("soutos.cache.changed"));
+  saveCache(loadCache().map((i) => ({ ...i, synced: true })));
 }
 export function removeNote(id: string) {
   saveCache(loadCache().filter((i) => i.id !== id));
-  window.dispatchEvent(new Event("soutos.cache.changed"));
 }
 
 export function useVoiceCache() {
-  const [items, setItems] = useState<CachedVoiceNote[]>(() => loadCache());
+  const [items, setItems] = useState<CachedItem[]>(() => loadCache());
   useEffect(() => {
     const h = () => setItems(loadCache());
     window.addEventListener("soutos.cache.changed", h);
@@ -43,4 +59,13 @@ export function useVoiceCache() {
     };
   }, []);
   return items;
+}
+
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
 }
