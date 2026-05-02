@@ -271,9 +271,10 @@ export default function Trees() {
             const x = layout.sectorX[s];
             const y = layout.sectorY[s];
             const w = layout.sectorW[s];
+            const h = layout.sectorH[s] + layout.labelPad;
             return (
               <g key={s}>
-                <rect x={x - 6} y={y - 6} width={w + 12} height={layout.sectorHeight + 12}
+                <rect x={x - 6} y={y - 6} width={w + 12} height={h + 6}
                   rx={10} fill="hsl(var(--card))" opacity={0.6} />
                 <text x={x + 4} y={y + 10} fontSize={14} fontFamily="Sora" fill="hsl(var(--muted-foreground))" letterSpacing="0.15em">
                   SETOR {s}
