@@ -235,13 +235,16 @@ export default function Trees() {
         >
           {/* Sector backgrounds + labels */}
           {Array.from({ length: SECTOR_COUNT }, (_, i) => {
-            const x = i * (layout.sectorWidth + SECTOR_GAP);
+            const s = i + 1;
+            const x = layout.sectorX[s];
+            const y = layout.sectorY[s];
+            const w = layout.sectorW[s];
             return (
-              <g key={i}>
-                <rect x={x - 6} y={0} width={layout.sectorWidth + 12} height={layout.sectorHeight + 40}
-                  rx={8} fill="hsl(var(--card))" opacity={0.6} />
-                <text x={x + 4} y={14} fontSize={14} fontFamily="Sora" fill="hsl(var(--muted-foreground))" letterSpacing="0.15em">
-                  SETOR {i + 1}
+              <g key={s}>
+                <rect x={x - 6} y={y - 6} width={w + 12} height={layout.sectorHeight + 12}
+                  rx={10} fill="hsl(var(--card))" opacity={0.6} />
+                <text x={x + 4} y={y + 10} fontSize={14} fontFamily="Sora" fill="hsl(var(--muted-foreground))" letterSpacing="0.15em">
+                  SETOR {s}
                 </text>
               </g>
             );
