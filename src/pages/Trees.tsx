@@ -20,21 +20,51 @@ export default function Trees() {
   const [view, setView] = useState<ViewState>({ x: 0, y: 0, scale: 0.35 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Build positions once
+  // Layout customizado:
+  //   topo → setor 7 (full width)
+  //          setor 6 (full width)
+  //          setor 5 (full width)
+  //   base → [ setor 4 | setor 3 | setor 2 | setor 1 ]
   const layout = useMemo(() => {
-    const sectorWidth = TREES_PER_ROW_COUNT * TREE_GAP;
-    const sectorHeight = ROWS_COUNT * ROW_GAP;
-    const totalWidth = SECTOR_COUNT * (sectorWidth + SECTOR_GAP);
-    const totalHeight = sectorHeight + 80;
+    const baseSectorWidth = TREES_PER_ROW_COUNT * TREE_GAP;
+    const sectorHeight = ROWS_COUNT * ROW_GAP + 28; // + label
+    const bottomRowWidth = 4 * baseSectorWidth + 3 * SECTOR_GAP;
+    const fullSectorWidth = bottomRowWidth; // setores 5,6,7 esticados
+    // Espaçamento horizontal das árvores nos setores full-width
+    const fullTreeGap = fullSectorWidth / TREES_PER_ROW_COUNT;
+
+    const totalWidth = bottomRowWidth;
+    const totalHeight = 3 * (sectorHeight + SECTOR_GAP) + sectorHeight + 20;
+
+    // Y de cada setor (de cima para baixo: 7,6,5,[4..1])
+    const sectorY: Record<number, number> = {};
+    sectorY[7] = 20;
+    sectorY[6] = sectorY[7] + sectorHeight + SECTOR_GAP;
+    sectorY[5] = sectorY[6] + sectorHeight + SECTOR_GAP;
+    const bottomY = sectorY[5] + sectorHeight + SECTOR_GAP;
+    sectorY[4] = bottomY; sectorY[3] = bottomY; sectorY[2] = bottomY; sectorY[1] = bottomY;
+
+    // X e largura de cada setor
+    const sectorX: Record<number, number> = {};
+    const sectorW: Record<number, number> = {};
+    [5, 6, 7].forEach((s) => { sectorX[s] = 0; sectorW[s] = fullSectorWidth; });
+    // Bottom: 4 esquerda, depois 3, 2, 1 (1 à direita)
+    const bottomOrder = [4, 3, 2, 1];
+    bottomOrder.forEach((s, i) => {
+      sectorX[s] = i * (baseSectorWidth + SECTOR_GAP);
+      sectorW[s] = baseSectorWidth;
+    });
+
     const positions = new Map<string, { x: number; y: number }>();
     for (const t of trees) {
-      const sectorX = (t.sector - 1) * (sectorWidth + SECTOR_GAP);
+      const isFull = t.sector >= 5;
+      const gap = isFull ? fullTreeGap : TREE_GAP;
       const rowIdx = rowToIdx(t.row);
-      const x = sectorX + (t.index - 1) * TREE_GAP + TREE_GAP / 2;
-      const y = rowIdx * ROW_GAP + ROW_GAP / 2 + 20;
+      const x = sectorX[t.sector] + (t.index - 1) * gap + gap / 2;
+      const y = sectorY[t.sector] + rowIdx * ROW_GAP + ROW_GAP / 2 + 22;
       positions.set(t.code, { x, y });
     }
-    return { sectorWidth, sectorHeight, totalWidth, totalHeight, positions };
+    return { sectorHeight, totalWidth, totalHeight, positions, sectorX, sectorY, sectorW };
   }, [trees]);
 
   function colorFor(t: Tree): string {
